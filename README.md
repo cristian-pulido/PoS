@@ -1,2 +1,0 @@
-# PoS
-Perception of Security
