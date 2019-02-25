@@ -63,7 +63,7 @@ def generate(file,lamda,colores=None,legend=None,pesos=True):
     T=312 #6 aos
     s = np.random.rand(n)  # vector PoS de las personas en el intante t, al principio aleatorio
     psi = 0.9  # velocidad perdida de memoria
-    nu = 0.9  # Impacto de la inseguridad
+    nu = 0.85  # Impacto de la inseguridad
     
     St = np.zeros((T,n ))  # PoS a lo largo del tiempo
     #identificacion de cada sujeto con su respectiva media de crimen
@@ -93,7 +93,7 @@ def generate(file,lamda,colores=None,legend=None,pesos=True):
         #comunicacion 
 
         #copia
-        scopia=s
+        scopia=s.copy()
         
         if pesos == True:
 
