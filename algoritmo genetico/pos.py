@@ -3,6 +3,47 @@ import copy
 
 letras = ["A","B","C","D","E","F","G","H"]
 
+def read(file):
+    # read the network
+    filepath = file
+    vertices = [];
+    edges = [];
+    readVertices = 0;
+    readEdges = 0;
+    with open(filepath) as fp:  
+        line = fp.readline()
+        cnt = 1
+        while line:
+            #print("Line {}: {}".format(cnt, line.strip()))
+
+            if readVertices == 1:
+                vertexData = line.strip().split(';');
+                if len(vertexData)==4:
+                    idxGroup = int(vertexData[3]);
+                    vertices.append([int(vertexData[0]),idxGroup])
+
+            if readEdges == 1:
+                edgeData = line.strip().split(';');
+                if len(edgeData)==2:
+                    edges.append([int(edgeData[0]),int(edgeData[1])])
+                    vertices[int(edgeData[0])].append(int(edgeData[1]));
+
+
+            if line.strip() == '# Vertices':
+#                 print('read vertices')
+                readVertices = 1;
+            if line.strip() == '# Edges':
+                readVertices = 0;
+                readEdges = 1;
+#                 print('read edge')
+            line = fp.readline()
+            cnt += 1
+            line.strip() 
+    #array con 1 elemento: numero vertice, 2 elemento: grupo que se encuentra
+    # resto son los vertices con los que se comunica
+    #print(edges)
+    return vertices,edges
+
 def validar(state,crimen=2,min_porcent=0.1):
     """
     Determina si el estado es valido, es decir ningun nodo esta desconectado
@@ -32,6 +73,15 @@ def validar(state,crimen=2,min_porcent=0.1):
     P=np.array(P.values())*1.0/sum(P.values())    
     result2=True in (P < min_porcent)
     return result and not result2
+
+def porcentaje(vecinos):
+    P={}
+    for v in vecinos:
+        if not v[1] in P:
+            P[v[1]]=0
+        P[v[1]]+=1.0/len(vecinos)
+        
+    return P
             
 
 
@@ -127,7 +177,7 @@ def generate(vertices,psi,nu,T=200,s=np.array([None]),lamda={"A":0,"B":0.05,"C":
         
         promedio=0
         for i in range(n):
-            promedio+=np.mean(St.T[i][100:])
+            promedio+=np.mean(St.T[i][T/2:])
         promedio=promedio*1.0/n
         
     
@@ -143,19 +193,19 @@ def homofilia(vertices):
                 edges[(vertice[0],vecino)]= 1*(vertice[1] == vertices[vecino][1])
     return sum(edges.values())*1.0/len(edges)
 
-def funcion_objetivo(state,s0,tipo="h"):
+def funcion_objetivo(state,s0,tipo="h",lamda={"A":0,"B":0.05,"C":0.5}):
     v=convert_matrix_to_vecinos(state)
-    S=generate(v,0.98,0.85,T=200,s=s0)[1]
+    S=generate(v,0.98,0.85,T=200,s=s0,lamda=lamda)[1]
     if tipo == "h":
         return np.cos(S)+np.cos(homofilia(v))
     else:
         return np.cos(S)
         
       
-def seleccion(Poblacion,s,tipo):
+def seleccion(Poblacion,s,tipo,lamda={"A":0,"B":0.05,"C":0.5}):
     fdp=[]
     for i in range(len(Poblacion)):
-        fdp.append(funcion_objetivo(Poblacion[i],s,tipo))
+        fdp.append(funcion_objetivo(Poblacion[i],s,tipo,lamda))
     
     fdp=fdp/sum(fdp)
 
@@ -222,16 +272,19 @@ def mutacion(state,crimen,probabilidad=None,min_porcent=0.1):
             state=copia
     return state
 
-def plot(vertices,s):
+def plot(vertices,s,lamda={"A":0,"B":0.05,"C":0.5}):
     import seaborn as sn
     import matplotlib.pyplot as plt
-    colors=["R","B","G"]
-    S=generate(vertices,0.9,0.85,100,s)[0].T
+    if len(lamda)== 3:
+        colors={"A":"G","B":"B","C":"R"}
+    else:
+        colors  = {"A":"green","B":"blue","C":"red","D":"orange","E":"purple","F":"pink","G":"yellow"}
+    S=generate(vertices,0.9,0.85,100,s,lamda)[0].T
     
     promedio=0
-    for i in range(20):
+    for i in range(100):
         promedio+=np.mean(S.T[i])
-    promedio=promedio/20.0
+    promedio=promedio/100.0
         
     
     
@@ -242,10 +295,10 @@ def plot(vertices,s):
         G[vertice[1]].append(vertice[0])
         
     
-    contador = 0
+    
     for grupo in G.keys():
-        sn.tsplot(S[G[grupo]],color=colors[contador],ci='sd')
-        contador+=1
+        sn.tsplot(S[G[grupo]],color=colors[grupo],ci='sd')
+        
 
     plt.legend([str(k) for k in G.keys()])
     plt.xlabel("Time")

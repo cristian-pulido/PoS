@@ -1,11 +1,10 @@
 from pos import *
 import matplotlib.pyplot as plt
-def grafica_grado_nodos(solucion):
-    
-    vecinos=convert_matrix_to_vecinos(solucion)
+def grafica_grado_nodos(vecinos):
+   
     grade={}
     for v in vecinos:
-        g=len(v[1:])
+        g=len(v[2:])
         if g not in grade:
             grade[g]=1
         else:
@@ -17,34 +16,41 @@ def grafica_grado_nodos(solucion):
     plt.xlabel("Log(k)")
     plt.ylabel("Log(P(k))")
     plt.show()
+
+def quien_habla(vecinos):
+    pv={}
+    for v in vecinos:
+        if not v[1] in pv:
+            pv[v[1]]={}
+        for i in v[2:]:
+            if not vecinos[i][1] in pv[v[1]]:
+                pv[v[1]][vecinos[i][1]] = 0
+            pv[v[1]][vecinos[i][1]]+=1
+    for i in pv:
+        aux =sum(pv[i].values())
+        for j in pv[i]:
+            pv[i][j]=round(pv[i][j]*1.0/aux,3)
+    return pv
     
-    
-def draw_graph(solucion,fear):
+def draw_graph(vertices,fear):
     import networkx as nx
     G = nx.Graph()
-    nodes=[]
-    for i in range(len(solucion["vector_crime"])):
-        nodes.append((i,solucion["vector_crime"][i]))
-    for i in nodes:
+    for i in vertices:
         G.add_node(i[0],crime=i[1])
-
     edges=[]
-    for i in range(len(solucion["matrix"])):
-        for j in range(len(solucion["matrix"][i])):
-            if solucion["matrix"][i][j] == 1 :
-                edges.append((i,i+j+1))
+    for i in vertices:
+        for j in i[2:]:
+            if (i[0],j) in edges or (j,i[0]) in edges:
+                pass
+            else:
+                edges.append((i[0],j))
     G.add_edges_from(edges)
     
     s=1000*fear+100
+    colors  = {"A":"green","B":"blue","C":"red","D":"orange","E":"purple","F":"pink","G":"yellow"}
     color=[]
     for i in range(G.number_of_nodes()):
-        if G.node[i]["crime"] == "A":
-            color.append("G")
-        elif G.node[i]["crime"] == "B":
-            color.append("B")
-        else:
-            color.append("R")
-
+        color.append(colors[G.node[i]["crime"]])
 
     nx.draw(G,with_labels=True,node_size=s,node_color=color,alpha=0.7,font_color="w")
     plt.show()
