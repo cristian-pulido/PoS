@@ -1,8 +1,10 @@
 import numpy as np
 import copy
 import matplotlib.pyplot as plt
+# from numba import jit
 
 
+plt.ion()
 letras = ["A","B","C","D","E","F","G","H"]
 
 n=100
@@ -59,6 +61,7 @@ def read(file):
         v[1]=letras[v[1]]
     return vertices,edges
 
+
 def porcentaje(vecinos):
     P={}
     for v in vecinos:
@@ -66,7 +69,7 @@ def porcentaje(vecinos):
             P[v[1]]=0
         P[v[1]]+=1.0/len(vecinos)
         
-    return P
+    return dict(sorted(P.items()))
 
 
 def sumar_lista(A):
@@ -133,7 +136,7 @@ def validar_estado(estado,n=n):
 def generate_estate(n=n,p=None):
     if not p :
         p=np.random.rand()
-    total=n*(n-1)/2
+    total=int(n*(n-1)/2)
     estado=np.ndarray.tolist(np.random.binomial(n=1,p=p,size=total))
     contador=0
     while validar_estado(estado=estado,n=n) == False:
@@ -274,11 +277,12 @@ def generate(vertices,psi=psi,nu=nu,T=200,s=np.array([None]),lamda=lamda,modelo=
         
         promedio=0
         for i in range(n):
-            promedio+=np.mean(St.T[i][T/2:])
+            promedio+=np.mean(St.T[i][int(T/2):])
         promedio=promedio*1.0/n
         
     
     return St, promedio
+
 
 def homofilia(vertices):
     edges={}
@@ -291,7 +295,7 @@ def homofilia(vertices):
     return sum(edges.values())*1.0/len(edges)
 
 
-def draw_graph(G,fear,crime=3,labels=False):
+def draw_graph(G,fear,crime=3,labels=False,save=False,file="",legends=None):
     import networkx as nx
     
     s=1000*fear+100
@@ -306,15 +310,21 @@ def draw_graph(G,fear,crime=3,labels=False):
     
     
     from matplotlib.lines import Line2D
+    
+    if legends == None:
+        legends={x:x for x in letras}
 
-    legend_elements = [Line2D([0], [0], marker='o', color='w', label=key,
+    legend_elements = [Line2D([0], [0], marker='o', color='w', label=legends[key],
                               markerfacecolor=colors[key], markersize=40, alpha=0.5) for key in letras[:crime] ]
 
     # Create the figure
         
     plt.legend(handles=legend_elements, loc='best',fontsize=40)
     
-    plt.show()
+    if save == True :
+        plt.savefig(file)
+    
+    plt.show();
     
     
 def assor(G):
@@ -322,9 +332,10 @@ def assor(G):
     a=attribute_assortativity_coefficient(G=G,attribute='crime')
     return 0.5*a+0.5
 
-def mixing_matrix(G):
+def mixing_matrix(G,crimen=crimen):
     from networkx.algorithms.assortativity.mixing import attribute_mixing_matrix
-    return attribute_mixing_matrix(G=G,attribute="crime")
+    m={x:i for x,i in zip(letras[:crimen],range(crimen))}
+    return attribute_mixing_matrix(G=G,attribute="crime",mapping=m)
 
 def normpdf(x, mean, sd):
     import math
@@ -332,6 +343,7 @@ def normpdf(x, mean, sd):
     denom = (2*math.pi*var)**.5
     num = math.exp(-(float(x)-float(mean))**2/(2*var))
     return num/denom
+
 
 def funcion_objetivo(state,s0,distribucion_crimen,n=n,tipo=tipo,lamda=lamda,psi=psi,nu=nu,modelo=modelo):
     
@@ -373,6 +385,7 @@ def inicializacion(individuos,n=n,crimen=crimen,min_porcent=min_porcent):
         Poblacion.append(generate_estate(n=n))
     return Poblacion
 
+
 def seleccion(Poblacion,s,distribucion_crimen,tipo=tipo,lamda=lamda,nu=nu,psi=psi,modelo=modelo):
     n=len(s)
     fdp=[]
@@ -384,10 +397,12 @@ def seleccion(Poblacion,s,distribucion_crimen,tipo=tipo,lamda=lamda,nu=nu,psi=ps
 
     return fdp
 
+ 
 def sample(Poblacion,fdp):
     P=[i for i in range(len(Poblacion))]
     return Poblacion[np.random.choice(P,p=fdp)]
 
+ 
 def combinacion(state1,state2,n=n):
     total=n*(n-1)/2+1
     point_cross=np.random.randint(total)   
@@ -403,6 +418,9 @@ def combinacion(state1,state2,n=n):
     
     return h1,h2
 
+
+
+ 
 def mutacion(state,n=n,probabilidad=None):
     
     copia=copy.deepcopy(state)
@@ -422,8 +440,11 @@ def mutacion(state,n=n,probabilidad=None):
     
     else:
         return state
+    
+   
+    
         
-def plot(vertices,s,lamda=lamda,psi=psi,nu=nu,modelo=modelo,T=100):
+def plot(vertices,s,lamda=lamda,psi=psi,nu=nu,modelo=modelo,T=220,save=False,f="",legends=None,draw=False):
     import seaborn as sn
     import matplotlib.pyplot as plt
     if len(lamda)== 3:
@@ -431,32 +452,45 @@ def plot(vertices,s,lamda=lamda,psi=psi,nu=nu,modelo=modelo,T=100):
     else:
         colors  = {"A":"green","B":"blue","C":"red","D":"orange","E":"purple","F":"pink","G":"yellow"}
     S=generate(vertices,psi,nu,T,s,lamda,modelo)[0].T
-    
+    S=S[:,120:]
     promedio=0
     for i in range(len(vertices)):
         promedio+=np.mean(S[i])
     promedio=promedio*1.0/len(vertices)
         
-    
-    
-    G={}
-    for vertice in vertices:
-        if vertice[1] not in G:
-            G[vertice[1]]=[]
-        G[vertice[1]].append(vertice[0])
-        
-    l=[k for k in G.keys()]
-    l.sort()
+    if draw == False:
+        return promedio
+    else:
 
-    
-    for grupo in l:
-        sn.tsplot(S[G[grupo]],color=colors[grupo],ci='sd')
-        
-    plt.legend(l)
-    plt.xlabel("Time")
-    plt.ylabel("Fear of crime")
-    plt.show()
-    return promedio
+        G={}
+        for vertice in vertices:
+            if vertice[1] not in G:
+                G[vertice[1]]=[]
+            G[vertice[1]].append(vertice[0])
+
+
+
+        l=[k for k in G.keys()]
+        l.sort()
+
+
+        for grupo in l:
+            sn.tsplot(data=S[G[grupo]],color=colors[grupo],ci='sd')
+
+        if legends == None:
+            legends={x:x for x in letras}
+
+        plt.legend(legends.values(),bbox_to_anchor=(0,1.13), loc="upper left",ncol=len(legends))
+        plt.xlabel("Time")
+        plt.ylabel("Fear of crime")
+        plt.ylim(0,1)
+        if save == True:
+            plt.savefig(f)
+        plt.show()
+        return promedio
+
+
+
 
 def grafica_grado_nodos(vecinos):
    
@@ -473,7 +507,7 @@ def grafica_grado_nodos(vecinos):
     plt.title("Distribucion Grado Nodos (Log-Log)")
     plt.xlabel("Log(k)")
     plt.ylabel("Log(P(k))")
-    plt.show()
+    plt.show();
     
 
 
@@ -521,7 +555,7 @@ def ver_medidas(G):
     plt.title("Grado promedio vecindad")
     plt.xlabel("Nodo")
     plt.ylabel("Grado")
-    plt.show()
+    plt.show();
 
     """
     Grado de Centralidad de cada nodo
@@ -531,7 +565,7 @@ def ver_medidas(G):
     plt.title("Grado de centralidad")
     plt.xlabel("Nodo")
     plt.ylabel("Centralidad")
-    plt.show()
+    plt.show();
 
 
     """
@@ -541,7 +575,7 @@ def ver_medidas(G):
     plt.plot(cluster.clustering(G).values())
     plt.title("coeficiente de agrupamiento")
     plt.xlabel("Nodo")
-    plt.show()
+    plt.show();
 
     """
     Media coeficiente de Agrupamiento
@@ -575,7 +609,7 @@ def ver_medidas(G):
     plt.plot(distance_measures.eccentricity(G).values())
     plt.title("Excentricidad de cada Nodo")
     plt.xlabel("Nodo")
-    plt.show()
+    plt.show();
 
     """
     Periferia 
@@ -602,7 +636,7 @@ def ver_medidas(G):
     plt.plot(link_analysis.pagerank_alg.pagerank(G).values())
     plt.title("Puntaje de cada Nodo")
     plt.xlabel("Nodo")
-    plt.show()
+    plt.show();
 
     """
     Coeficiente de Small World.
@@ -621,11 +655,11 @@ def ver_medidas(G):
     print("Omega coeficiente: "+str(smallworld.omega(G)))
     
 
-def run(folder,total_generaciones,individuos,porcentaje_crimen,s0,n=n,crimen=crimen,tipo_objetivo=tipo,lamda=lamda,min_porcent=min_porcent,modelo=modelo):
+def run(folder,total_generaciones,individuos,porcentaje_crimen,s0,n=n,crimen=crimen,tipo_objetivo=tipo,lamda=lamda,min_porcent=min_porcent,modelo=modelo,nu=nu):
     
     import sys, os, shutil
     import matplotlib as mpl
-    mpl.use('Agg')
+    
     
     if not os.path.exists(folder):
         os.mkdir(folder)
@@ -638,6 +672,7 @@ def run(folder,total_generaciones,individuos,porcentaje_crimen,s0,n=n,crimen=cri
     archivo.write("# de cromosomas por generacion: "+ str(individuos)+ '\n')
     archivo.write("minimo porcentaje de grupo: "+ str(min_porcent)+ '\n')
     archivo.write("Modelo utilizado: "+ str(modelo)+ '\n')
+    archivo.write("valor de nu: "+ str(nu)+ '\n')
   
     archivo.write("-----------------------------------------------------------------"+'\n')
 
@@ -649,6 +684,8 @@ def run(folder,total_generaciones,individuos,porcentaje_crimen,s0,n=n,crimen=cri
                          n=n,
                          crimen=crimen,
                          min_porcent=min_porcent)
+    
+    print("Poblacion inicial terminado")
 
     archivo.write("Media miedo inicial: "+ str(np.mean(s0))+ '\n')
     
@@ -673,9 +710,9 @@ def run(folder,total_generaciones,individuos,porcentaje_crimen,s0,n=n,crimen=cri
 #         print("Mejor de la Generacion:")
 #         print(Poblacion[best_cromosome_generation])
 
-        media_crimen=plot(convert_state_to_vecinos(state=Poblacion[best_cromosome_generation],
-                                                   dist_crimen=distr_crimen,n=n),
-                          s0,lamda,psi,nu)
+        media_crimen=plot(vertices=convert_state_to_vecinos(state=Poblacion[best_cromosome_generation],
+                                                            dist_crimen=distr_crimen,n=n),
+                          s=s0,lamda=lamda,psi=psi,nu=nu)
 
         archivo.write("Media de crimen:" + str(media_crimen)+ '\n')
         print("Media de crimen:" + str(media_crimen))
