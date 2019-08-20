@@ -187,8 +187,17 @@ def convert_vecinos_to_solution(vecinos):
     return solution
     
 
-def generate(vertices,psi=psi,nu=nu,mu=mu,T=200,s=np.array([None]),lamda=lamda,modelo=modelo):
+def generate(vertices,psi=psi,nu=nu,mu=mu,T=200,s=np.array([None]),lamda=lamda,modelo=modelo,contar=None):
     n=len(vertices)
+    
+    
+    if modelo == "g_m_v":
+        Adj=(np.zeros((len(vertices),len(vertices))) == 1)
+        n_vecinos=np.zeros(len(vertices))
+        
+    
+    conteo=np.zeros(n)
+    
     
     #periodos en semanas
     #T=150 #6 aos
@@ -225,8 +234,13 @@ def generate(vertices,psi=psi,nu=nu,mu=mu,T=200,s=np.array([None]),lamda=lamda,m
         scopia=s.copy()
         
         if modelo == "g_m_v":
+            
+            for i in range(n):
+                n_vecinos[i]=len(vertices[i][2:])
+                Adj[i][vertices[i][2:]]=True
+            
             # media opiniones vecinos 
-            media=[np.mean(scopia[vertices[i][2:]]) for i in range(n)]
+            media=(scopia*Adj).sum(axis=1)/n_vecinos
             # pesos segun comparacion
             w=(scopia > media)*mu + (scopia < media)*nu
             # Efecto comunicacion
@@ -256,6 +270,9 @@ def generate(vertices,psi=psi,nu=nu,mu=mu,T=200,s=np.array([None]),lamda=lamda,m
                         s[k]=(1-nu)*scopia[k]+nu*scopia[aux]
                         s[aux]=mu*scopia[k]+(1-mu)*scopia[aux]
                         
+                    conteo[k]+=1
+                    conteo[aux]+=1
+                        
                     salto.append(k)
                     salto.append(aux)
                     
@@ -278,6 +295,9 @@ def generate(vertices,psi=psi,nu=nu,mu=mu,T=200,s=np.array([None]),lamda=lamda,m
             # actualizacion todas las personas que se comunican
             s[first]=scopia[first]-w1*(scopia[first]-scopia[second])
             s[second]=scopia[second]-w2*(scopia[second]-scopia[first])
+            
+            conteo[first]+=1
+            conteo[second]+=1
                         
                     
         else:
@@ -288,8 +308,10 @@ def generate(vertices,psi=psi,nu=nu,mu=mu,T=200,s=np.array([None]),lamda=lamda,m
         St[t] = s
         promedio=np.mean(St.T[:,int(T/2):])
         
-    
-    return St, promedio
+    if contar == None:
+        return St, promedio
+    else:
+        return St, conteo
 
 def homofilia(G):
     return sum([G.node[i[0]] == G.node[i[1]] for i in G.edges])/len(G.edges)
@@ -435,40 +457,37 @@ def mutacion(state,n=n,probabilidad=None):
     
         
 def plot(vertices,s,lamda=lamda,psi=psi,nu=nu,mu=mu,modelo=modelo,T=220,save=False,f="",legends=None,draw=False):
-    import seaborn as sn
+    import seaborn as sns
     import matplotlib.pyplot as plt
-    if len(lamda)== 3:
-        colors={"A":"G","B":"B","C":"R"}
-    else:
-        colors  = {"A":"green","B":"blue","C":"red","D":"orange","E":"purple","F":"pink","G":"yellow"}
-    S,promedio=generate(vertices,psi,nu,mu,T*2,s,lamda,modelo)
-    S=S.T[:,int(T):]
+    import pandas as pd
+    
+    colors  = {"A":"green","B":"blue","C":"red","D":"orange","E":"purple","F":"pink","G":"yellow"}
+    S,promedio=generate(vertices=vertices,psi=psi,nu=nu,
+                        mu=mu,T=T,s=s,lamda=lamda,modelo=modelo)
+    S=S.T#[:,int(T):]
         
     if draw == False:
-        return promedio
+        return S#promedio
     else:
-
-        G={}
-        for vertice in vertices:
-            if vertice[1] not in G:
-                G[vertice[1]]=[]
-            G[vertice[1]].append(vertice[0])
-
-
-
-        l=[k for k in G.keys()]
-        l.sort()
-
-
-        for grupo in l:
-            sn.tsplot(data=S[G[grupo]],color=colors[grupo],ci='sd')
-
+        
         if legends == None:
-            legends={x:x for x in letras}
+            legends={x:x for x in letras[:len(lamda)]}
+            
+            
+        
+        grado_grupo =np.array([[len(vertice[2:]),legends[vertice[1]]] for vertice in vertices])            
+        V=pd.DataFrame(grado_grupo,columns=['Grade','Group']).astype({'Grade': 'int64'})
+        
+        plt.figure(figsize=(10,3))
+        A=pd.DataFrame()
+        A['node']=np.array([[i]*T for i in range(S.shape[0])]).flatten()
+        A['Time']=list(np.arange(T))*S.shape[0]
+        A['Fear of Crime']=S.flatten()
+        A['Group']=V.Group[A.node].values
 
-        plt.legend(legends.values(),bbox_to_anchor=(0,1.13), loc="upper left",ncol=len(legends))
-        plt.xlabel("Time")
-        plt.ylabel("Fear of crime")
+        sns.lineplot(data=A,x='Time',y='Fear of Crime',hue='Group',ci='sd',
+                     hue_order=legends.values(),palette=list(colors.values())[:len(legends)],legend='full')
+        plt.legend(loc='upper left',ncol=4,bbox_to_anchor=(0,1.23))
         plt.ylim(0,1)
         if save == True:
             plt.savefig(f)
