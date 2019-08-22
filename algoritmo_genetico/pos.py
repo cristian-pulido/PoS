@@ -490,7 +490,7 @@ def plot(vertices,s,lamda=lamda,psi=psi,nu=nu,mu=mu,modelo=modelo,T=220,save=Fal
         plt.legend(loc='upper left',ncol=4,bbox_to_anchor=(0,1.23))
         plt.ylim(0,1)
         if save == True:
-            plt.savefig(f)
+            plt.savefig(f, bbox_inches = "tight")
         plt.show()
         return promedio
 
