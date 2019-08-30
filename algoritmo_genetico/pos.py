@@ -5,7 +5,7 @@ import matplotlib.pyplot as plt
 
 
 plt.ion()
-letras = ["A","B","C","D","E","F","G","H"]
+letras = ["A","B","C","D","E","F","G","H","I","J"]
 
 n=100
 crimen = 3
@@ -321,13 +321,16 @@ def draw_graph(G,fear,crime=crimen,labels=False,save=False,file="",legends=None)
     import networkx as nx
     
     s=1000*fear+100
-    colors  = {"A":"green","B":"blue","C":"red","D":"orange","E":"purple","F":"pink","G":"yellow"}
+    colors  = {"A":"royalblue","B":"gold","C":"orangered","D":"green","E":"purple","F":"pink","G":"aqua","H":"peru","I":"navy","J":"darkred"}
     
     labels=[]
     color=[colors[G.node[i]['crime']] for i in G.nodes]
-    pos = nx.spring_layout(G)
+    #spectral_layout
+    #spring_layout
+    #kamada_kawai_layout
+    pos = nx.kamada_kawai_layout(G)
     plt.figure(figsize=(30,20))
-    nx.draw(G,pos=pos,with_labels=labels,node_size=s,node_color=color,alpha=0.5,font_color="w")
+    nx.draw(G,pos=pos,with_labels=labels,node_size=s,node_color=color,alpha=0.8,font_color="w")
     
     
     from matplotlib.lines import Line2D
@@ -336,7 +339,7 @@ def draw_graph(G,fear,crime=crimen,labels=False,save=False,file="",legends=None)
         legends={x:x for x in letras}
 
     legend_elements = [Line2D([0], [0], marker='o', color='w', label=legends[key],
-                              markerfacecolor=colors[key], markersize=40, alpha=0.5) for key in letras[:crime] ]
+                              markerfacecolor=colors[key], markersize=40, alpha=0.8) for key in letras[:crime] ]
 
     # Create the figure
         
@@ -351,7 +354,7 @@ def draw_graph(G,fear,crime=crimen,labels=False,save=False,file="",legends=None)
 def assor(G):
     from networkx.algorithms.assortativity import attribute_assortativity_coefficient
     a=attribute_assortativity_coefficient(G=G,attribute='crime')
-    return 0.5*a+0.5
+    return a
 
 def mixing_matrix(G,crimen=crimen):
     from networkx.algorithms.assortativity.mixing import attribute_mixing_matrix
@@ -460,8 +463,13 @@ def plot(vertices,s,lamda=lamda,psi=psi,nu=nu,mu=mu,modelo=modelo,T=220,save=Fal
     import seaborn as sns
     import matplotlib.pyplot as plt
     import pandas as pd
+    import matplotlib
     
-    colors  = {"A":"green","B":"blue","C":"red","D":"orange","E":"purple","F":"pink","G":"yellow"}
+    font = {'size'   : 13}
+
+    matplotlib.rc('font', **font)
+    
+    colors  = {"A":"royalblue","B":"gold","C":"orangered","D":"orange","E":"purple","F":"pink","G":"yellow"}
     S,promedio=generate(vertices=vertices,psi=psi,nu=nu,
                         mu=mu,T=T,s=s,lamda=lamda,modelo=modelo)
     S=S.T#[:,int(T):]
